@@ -1,0 +1,7 @@
+#!/bin/sh
+# Strip AI/Cursor co-author trailers that tooling may inject.
+msg_file="$1"
+tmp="$(mktemp)"
+grep -viE '^[[:space:]]*Co-authored-by:.*(Cursor|cursoragent|OpenAI|Copilot|ChatGPT)' "$msg_file" \
+  | sed -e :a -e '/^\n*$/{$d;N;ba' -e '}' > "$tmp"
+mv "$tmp" "$msg_file"

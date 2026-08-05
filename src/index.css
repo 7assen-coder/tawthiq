@@ -1,0 +1,145 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: "Inter";
+  font-weight: 400;
+  font-style: normal;
+  src: local("Inter Regular"), local("Inter-Regular");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Inter";
+  font-weight: 500;
+  font-style: normal;
+  src: local("Inter Medium"), local("Inter-Medium");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Inter";
+  font-weight: 600;
+  font-style: normal;
+  src: local("Inter SemiBold"), local("Inter-SemiBold");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Inter";
+  font-weight: 700;
+  font-style: normal;
+  src: local("Inter Bold"), local("Inter-Bold");
+  font-display: swap;
+}
+@font-face {
+  font-family: "Inter";
+  font-weight: 800;
+  font-style: normal;
+  src: local("Inter ExtraBold"), local("Inter-ExtraBold");
+  font-display: swap;
+}
+
+:root {
+  --bg-app: #F8F9FB;
+  --bg-card: #FFFFFF;
+  --border: #E4E7EC;
+  --text-primary: #1A2332;
+  --text-secondary: #64748B;
+  --text-faint: #94A3B8;
+
+  --teal: #0E6E76;
+  --teal-dark: #0A555B;
+  --teal-light: #E3F2F1;
+  --gold: #C9962B;
+
+  --green: #1E9E6B;
+  --green-bg: #E7F7EF;
+  --red: #E0533D;
+  --red-bg: #FDEBE8;
+  --red-dark: #B01E28;
+  --red-dark-bg: #FBE4E5;
+  --blue: #4C5FD5;
+  --blue-bg: #ECEEFC;
+  --indigo: #4C5FD5;
+  --indigo-bg: #ECEEFC;
+  --amber: #D89A1D;
+  --amber-dark: #8A6512;
+  --amber-bg: #FCF3DC;
+}
+
+html.dark {
+  --bg-app: #0F1419;
+  --bg-card: #1A2332;
+  --border: #2A3544;
+  --text-primary: #E8ECF0;
+  --text-secondary: #8899AA;
+  --text-faint: #556677;
+
+  --teal: #14B8A6;
+  --teal-dark: #0D9488;
+  --teal-light: #0D3D38;
+  --gold: #D4A843;
+
+  --green: #34D399;
+  --green-bg: #0D3D2E;
+  --red: #F87171;
+  --red-bg: #3D1F1F;
+  --red-dark: #EF4444;
+  --red-dark-bg: #3D1515;
+  --blue: #818CF8;
+  --blue-bg: #1E1F3D;
+  --indigo: #818CF8;
+  --indigo-bg: #1E1F3D;
+  --amber: #FBBF24;
+  --amber-dark: #D4A843;
+  --amber-bg: #3D3015;
+  --pin-bg: radial-gradient(ellipse at center, #0F1419 0%, #131A22 50%, #0F1419 100%);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+body {
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  background: var(--bg-app);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  user-select: none;
+}
+
+input, textarea, select, button {
+  font-family: inherit;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+.num-ltr {
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 5px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-faint);
+}

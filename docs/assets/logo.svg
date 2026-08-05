@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Tawthiq">
+  <rect width="512" height="512" rx="112" fill="#0B0B0B"/>
+  <g fill="none" stroke-linecap="round" stroke-width="72">
+    <path d="M148 348c-52-52-52-136 0-188s136-52 188 0" stroke="#2DC1D6"/>
+    <path d="M364 164c52 52 52 136 0 188s-136 52-188 0" stroke="#F0A429"/>
+  </g>
+  <circle cx="176" cy="336" r="34" fill="#2DC1D6"/>
+  <circle cx="336" cy="176" r="34" fill="#F0A429"/>
+</svg>

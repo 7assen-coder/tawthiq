@@ -1,0 +1,112 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Git tag to release (e.g. v1.0.0)
+        required: true
+        default: v1.0.0
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-latest
+            args: --bundles nsis
+          - platform: macos-latest
+            args: --bundles app,dmg
+          - platform: ubuntu-22.04
+            args: --bundles deb,appimage
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Linux WebKit / GTK deps
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            xdg-utils \
+            pkg-config \
+            build-essential
+
+      - name: Install JS dependencies
+        run: |
+          npm -v
+          npm ci --no-audit --no-fund || npm install --no-audit --no-fund
+
+      - name: Build and attach to GitHub Release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        with:
+          tagName: ${{ github.event.inputs.tag || github.ref_name }}
+          releaseName: Tawthiq ${{ github.event.inputs.tag || github.ref_name }}
+          releaseBody: |
+            Desktop installers for Windows (NSIS `.exe`), macOS (`.dmg`), and Linux (`.deb` / `.AppImage`).
+            After this workflow finishes, also download `Tawthiq-${{ github.event.inputs.tag || github.ref_name }}-all-os.zip`.
+            Hospital SOP: docs/IT.md. Unsigned first builds may trigger SmartScreen / Gatekeeper (macOS: right-click → Open).
+          releaseDraft: false
+          prerelease: false
+          args: ${{ matrix.args }}
+          updaterJsonPreferNsis: true
+
+  package-all-os:
+    needs: build
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Zip per-OS installers onto the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          mkdir -p all-os/{windows,macos,linux,updater} all-os-raw
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir all-os-raw
+          shopt -s nullglob
+          cd all-os-raw
+          for f in *.exe *.nsis.zip *.msi; do mv "$f" ../all-os/windows/; done
+          for f in *.dmg *.app.tar.gz; do mv "$f" ../all-os/macos/; done
+          for f in *.deb *.AppImage *.rpm; do mv "$f" ../all-os/linux/; done
+          for f in latest.json *.sig *.app.tar.gz.sig; do
+            [[ -e "$f" ]] && mv "$f" ../all-os/updater/ || true
+          done
+          # leftover updater sidecars / checksums
+          for f in *; do
+            [[ -f "$f" ]] && mv "$f" ../all-os/updater/
+          done
+          cd ..
+          find all-os -type f -print0 | sort -z | xargs -0 sha256sum > all-os/SHA256SUMS.txt
+          zip -r "Tawthiq-${TAG}-all-os.zip" all-os
+          gh release upload "$TAG" "Tawthiq-${TAG}-all-os.zip" --repo "$GITHUB_REPOSITORY" --clobber

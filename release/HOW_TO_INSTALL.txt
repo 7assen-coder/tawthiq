@@ -1,0 +1,24 @@
+Tawthiq v1.0.0 installers
+=========================
+
+Preferred layout (also copied to Desktop/Tawthiq):
+
+  windows/   Tawthiq_*_x64-setup.exe
+  macos/     Tawthiq.app and/or .dmg
+  linux/     .deb and .AppImage
+
+macOS (local build on this Mac):
+  1. Open macos/
+  2. Drag Tawthiq.app to Applications
+  3. First launch: right-click → Open (Gatekeeper)
+
+Windows + Linux:
+  Built by GitHub Actions on tag v1.0.0.
+  After the Release workflow is green:
+
+    ./scripts/fetch-installers.sh v1.0.0
+
+  That downloads assets into release/ and stages Desktop/Tawthiq/{windows,macos,linux}.
+
+Updates: online PCs get an in-app banner after each new git tag (./scripts/release.sh 1.0.1).
+Revoke: edit access.json on GitHub main and push.

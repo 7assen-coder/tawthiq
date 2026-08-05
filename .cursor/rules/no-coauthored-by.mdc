@@ -1,0 +1,11 @@
+---
+description: No Cursor/AI co-authors on Tawthiq commits
+alwaysApply: true
+---
+
+# Tawthiq git identity
+
+- Commits are **only** `7assen-coder` (the user's git name/email).
+- **Never** add `Co-authored-by: Cursor`, `cursoragent`, or any AI trailer.
+- **Never** put Cursor in author, committer, or GitHub contributor metadata.
+- Commit messages stay human-only. No AI signatures.

@@ -1,0 +1,72 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Tawthiq",
+  "version": "1.0.0",
+  "identifier": "com.tawthiq.desktop",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:5173",
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Tawthiq",
+        "width": 1100,
+        "height": 780,
+        "minWidth": 900,
+        "minHeight": 650,
+        "resizable": true,
+        "fullscreen": false,
+        "decorations": true,
+        "transparent": false
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src ipc: http://ipc.localhost https://ipc.localhost"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["nsis", "app", "dmg", "deb", "appimage"],
+    "createUpdaterArtifacts": true,
+    "publisher": "Tawthiq",
+    "copyright": "Copyright © Tawthiq",
+    "category": "Business",
+    "shortDescription": "CNAM / OLIVEX hospital reconciliation",
+    "longDescription": "Offline desktop app for Mauritanian hospital billing reconciliation between CNAM and OLIVEX.",
+    "homepage": "https://github.com/7assen-coder/tawthiq",
+    "licenseFile": "../LICENSE",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "windows": {
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper",
+        "silent": true
+      },
+      "nsis": {
+        "installMode": "currentUser",
+        "displayLanguageSelector": false
+      }
+    },
+    "macOS": {
+      "hardenedRuntime": true,
+      "minimumSystemVersion": "11.0",
+      "signingIdentity": "-"
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEE0NDVGQjE5MjBGQkU4NzYKUldSMjZQc2dHZnRGcE1YUVVTQmkzdmk5Mmt2ZDFmWkRWRmVxVkV0UlVUdDYzRU9Dc2dEaXlVWjkK",
+      "endpoints": [
+        "https://github.com/7assen-coder/tawthiq/releases/latest/download/latest.json"
+      ]
+    }
+  }
+}
