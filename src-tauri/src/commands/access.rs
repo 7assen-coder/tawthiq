@@ -1,11 +1,23 @@
+use base64::Engine;
+use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 use serde::{Deserialize, Serialize};
 use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Manager};
 
 const ACCESS_URL: &str = "https://raw.githubusercontent.com/7assen-coder/tawthiq/main/access.json";
+const ACCESS_SIG_URL: &str =
+    "https://raw.githubusercontent.com/7assen-coder/tawthiq/main/access.json.sig";
+const REGISTRY_URL: &str = "https://tawthiq-install-registry.tawthiq.workers.dev";
 const DEFAULT_WHATSAPP: &str = "+22241824343";
 const DEFAULT_EMAIL: &str = "MoHasseenn@gmail.com";
 const DEFAULT_GRACE_DAYS: i64 = 2;
+
+/// Ed25519 public key (32 bytes) for access.json signatures.
+/// Private key lives only at ~/.config/tawthiq/access-signing.key (never ship it).
+const ACCESS_VERIFYING_KEY_BYTES: [u8; 32] = [
+    0xec, 0xce, 0xf2, 0x83, 0xac, 0x10, 0xad, 0xa0, 0xb0, 0xf8, 0x8d, 0xcb, 0x4e, 0x3a, 0xb2, 0xca,
+    0xe3, 0x00, 0x99, 0x7e, 0x81, 0xaa, 0x7d, 0x2d, 0xab, 0xd5, 0x6e, 0xba, 0xff, 0x95, 0xeb, 0x71,
+];
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ContactInfo {
@@ -47,6 +59,27 @@ fn default_true() -> bool {
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
+pub struct InstallRecord {
+    pub id: String,
+    #[serde(default)]
+    pub label: String,
+    #[serde(default = "default_platform")]
+    pub platform: String,
+    #[serde(default)]
+    pub notes: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub hostname: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub app_version: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_seen: Option<String>,
+}
+
+fn default_platform() -> String {
+    "unknown".into()
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
 struct RemoteAccess {
     #[serde(default)]
     revoked_all: bool,
@@ -60,6 +93,8 @@ struct RemoteAccess {
     contact: ContactInfo,
     #[serde(default)]
     resets: Vec<ResetEntry>,
+    #[serde(default)]
+    installs: Vec<InstallRecord>,
     #[serde(default)]
     message_fr: Option<String>,
     #[serde(default)]
@@ -81,8 +116,31 @@ pub struct AccessStatus {
     pub resets: Vec<ResetEntry>,
     pub revoked_install_ids: Vec<String>,
     pub admin_install_ids: Vec<String>,
+    pub installs: Vec<InstallRecord>,
     pub message_fr: String,
     pub message_ar: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct SeenListResponse {
+    installs: Vec<SeenInstall>,
+}
+
+#[derive(Debug, Deserialize)]
+struct SeenInstall {
+    id: String,
+    #[serde(default)]
+    label: String,
+    #[serde(default)]
+    platform: String,
+    #[serde(default)]
+    hostname: String,
+    #[serde(default)]
+    app_version: String,
+    #[serde(default)]
+    notes: String,
+    #[serde(default)]
+    last_seen: String,
 }
 
 fn app_data_dir(app: &AppHandle) -> Result<std::path::PathBuf, String> {
@@ -266,13 +324,153 @@ fn default_messages() -> (String, String) {
     )
 }
 
-fn fetch_remote() -> Option<RemoteAccess> {
-    let agent = ureq::AgentBuilder::new()
+fn http_agent() -> ureq::Agent {
+    ureq::AgentBuilder::new()
         .timeout(std::time::Duration::from_secs(5))
-        .build();
+        .build()
+}
+
+pub fn verify_access_policy_bytes(policy: &[u8], sig_b64: &str) -> bool {
+    let Ok(vk) = VerifyingKey::from_bytes(&ACCESS_VERIFYING_KEY_BYTES) else {
+        return false;
+    };
+    let Ok(sig_bytes) = base64::engine::general_purpose::STANDARD.decode(sig_b64.trim()) else {
+        return false;
+    };
+    let Ok(sig) = Signature::from_slice(&sig_bytes) else {
+        return false;
+    };
+    vk.verify(policy, &sig).is_ok()
+}
+
+fn fetch_remote() -> Option<RemoteAccess> {
+    let agent = http_agent();
     let resp = agent.get(ACCESS_URL).call().ok()?;
     let text = resp.into_string().ok()?;
+    let sig_resp = agent.get(ACCESS_SIG_URL).call().ok()?;
+    let sig = sig_resp.into_string().ok()?;
+    if !verify_access_policy_bytes(text.as_bytes(), &sig) {
+        log::warn!("access.json signature verification failed");
+        return None;
+    }
     serde_json::from_str(&text).ok()
+}
+
+fn platform_label() -> String {
+    match std::env::consts::OS {
+        "macos" => "macos".into(),
+        "windows" => "windows".into(),
+        "linux" => "linux".into(),
+        other => other.into(),
+    }
+}
+
+fn send_heartbeat(install_id: &str) {
+    let body = serde_json::json!({
+        "install_id": install_id,
+        "platform": platform_label(),
+        "hostname": whoami::fallible::hostname().unwrap_or_default(),
+        "app_version": env!("CARGO_PKG_VERSION"),
+    });
+    let agent = http_agent();
+    let _ = agent
+        .post(&format!("{REGISTRY_URL}/v1/heartbeat"))
+        .set("content-type", "application/json")
+        .send_json(body);
+}
+
+fn fetch_seen_installs(admin_install_id: &str) -> Vec<InstallRecord> {
+    let agent = http_agent();
+    let Ok(resp) = agent
+        .get(&format!("{REGISTRY_URL}/v1/seen"))
+        .set("X-Install-Id", admin_install_id)
+        .call()
+    else {
+        return vec![];
+    };
+    let Ok(parsed) = resp.into_json::<SeenListResponse>() else {
+        return vec![];
+    };
+    parsed
+        .installs
+        .into_iter()
+        .map(|s| {
+            let hostname = s.hostname.trim().to_string();
+            let label = if !s.label.trim().is_empty() {
+                s.label
+            } else if !hostname.is_empty() {
+                hostname.clone()
+            } else {
+                String::new()
+            };
+            InstallRecord {
+                id: s.id,
+                label,
+                platform: if s.platform.is_empty() {
+                    "unknown".into()
+                } else {
+                    s.platform
+                },
+                notes: s.notes,
+                hostname: if hostname.is_empty() {
+                    None
+                } else {
+                    Some(hostname)
+                },
+                app_version: if s.app_version.is_empty() {
+                    None
+                } else {
+                    Some(s.app_version)
+                },
+                last_seen: if s.last_seen.is_empty() {
+                    None
+                } else {
+                    Some(s.last_seen)
+                },
+            }
+        })
+        .collect()
+}
+
+fn merge_installs(policy: &[InstallRecord], seen: &[InstallRecord]) -> Vec<InstallRecord> {
+    let mut map = std::collections::HashMap::<String, InstallRecord>::new();
+    for item in policy {
+        let id = item.id.trim().to_string();
+        if id.is_empty() {
+            continue;
+        }
+        map.insert(id.clone(), item.clone());
+    }
+    for item in seen {
+        let id = item.id.trim().to_string();
+        if id.is_empty() {
+            continue;
+        }
+        match map.get_mut(&id) {
+            Some(existing) => {
+                if existing.label.trim().is_empty() && !item.label.trim().is_empty() {
+                    existing.label = item.label.clone();
+                }
+                if existing.platform == "unknown" && item.platform != "unknown" {
+                    existing.platform = item.platform.clone();
+                }
+                if existing.hostname.is_none() {
+                    existing.hostname = item.hostname.clone();
+                }
+                if existing.app_version.is_none() {
+                    existing.app_version = item.app_version.clone();
+                }
+                existing.last_seen = item.last_seen.clone().or(existing.last_seen.clone());
+                if existing.notes.trim().is_empty() && !item.notes.trim().is_empty() {
+                    existing.notes = item.notes.clone();
+                }
+            }
+            None => {
+                map.insert(id, item.clone());
+            }
+        }
+    }
+    map.into_values().collect()
 }
 
 fn cached_policy_path(app: &AppHandle) -> Result<std::path::PathBuf, String> {
@@ -301,6 +499,7 @@ pub fn check_access(app: AppHandle) -> Result<AccessStatus, String> {
     let (remote, online_ok) = match fetch_remote() {
         Some(r) => {
             cache_policy(&app, &r);
+            send_heartbeat(&install_id);
             (Some(r), true)
         }
         None => (load_cached_policy(&app), false),
@@ -334,6 +533,11 @@ pub fn check_access(app: AppHandle) -> Result<AccessStatus, String> {
         if offline_locked && !is_admin {
             crate::guard::lock();
         }
+        let mut installs = remote.installs.clone();
+        if is_admin && online_ok {
+            let seen = fetch_seen_installs(&install_id);
+            installs = merge_installs(&installs, &seen);
+        }
         return Ok(AccessStatus {
             install_id,
             revoked,
@@ -344,6 +548,7 @@ pub fn check_access(app: AppHandle) -> Result<AccessStatus, String> {
             resets: remote.resets,
             revoked_install_ids: remote.revoked_install_ids,
             admin_install_ids: remote.admin_install_ids,
+            installs,
             message_fr: remote.message_fr.unwrap_or(default_fr),
             message_ar: remote.message_ar.unwrap_or(default_ar),
         });
@@ -363,6 +568,7 @@ pub fn check_access(app: AppHandle) -> Result<AccessStatus, String> {
         resets: vec![],
         revoked_install_ids: vec![],
         admin_install_ids: vec![],
+        installs: vec![],
         message_fr: default_fr,
         message_ar: default_ar,
     })
@@ -448,5 +654,23 @@ mod tests {
     #[test]
     fn clock_rollback_forces_lock() {
         assert!(offline_grace_exceeded(100, Some(50), 50, 2, true));
+    }
+
+    #[test]
+    fn verifies_signed_access_fixture() {
+        let policy = std::fs::read(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../access.json"),
+        )
+        .expect("access.json");
+        let sig = std::fs::read_to_string(
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../access.json.sig"),
+        )
+        .expect("access.json.sig");
+        assert!(verify_access_policy_bytes(&policy, &sig));
+        let mut bad = policy.clone();
+        if let Some(b) = bad.last_mut() {
+            *b ^= 0x01;
+        }
+        assert!(!verify_access_policy_bytes(&bad, &sig));
     }
 }

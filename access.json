@@ -10,6 +10,14 @@
     "email": "MoHasseenn@gmail.com"
   },
   "resets": [],
+  "installs": [
+    {
+      "id": "1e1081a3-0f72-42d5-9ccc-6108dbe84080",
+      "label": "Admin Mac",
+      "platform": "macos",
+      "notes": ""
+    }
+  ],
   "message_fr": "Accès révoqué. Contactez l’éditeur.",
   "message_ar": "تم إلغاء الوصول. تواصل مع الناشر."
 }

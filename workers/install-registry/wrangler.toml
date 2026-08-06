@@ -1,0 +1,11 @@
+name = "tawthiq-install-registry"
+main = "src/index.ts"
+compatibility_date = "2024-11-01"
+
+[[kv_namespaces]]
+binding = "SEEN"
+id = "a4591b142cfd4146b80a36b4ce5087c6"
+preview_id = "2053e4262adc42b191f1077defc1d740"
+
+[vars]
+ACCESS_URL = "https://raw.githubusercontent.com/7assen-coder/tawthiq/main/access.json"

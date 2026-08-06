@@ -58,6 +58,7 @@ export const exportAccessPolicyJson = (payload: {
   offlineGraceDays: number;
   contact: ContactInfo;
   resets: ResetEntry[];
+  installs: InstallRecord[];
   messageFr: string;
   messageAr: string;
   outputPath: string;
@@ -69,6 +70,7 @@ export const exportAccessPolicyJson = (payload: {
     offlineGraceDays: payload.offlineGraceDays,
     contact: payload.contact,
     resets: payload.resets,
+    installs: payload.installs,
     messageFr: payload.messageFr,
     messageAr: payload.messageAr,
     outputPath: payload.outputPath,
@@ -89,6 +91,16 @@ export interface ResetEntry {
   once: boolean;
 }
 
+export interface InstallRecord {
+  id: string;
+  label: string;
+  platform: string;
+  notes: string;
+  hostname?: string | null;
+  app_version?: string | null;
+  last_seen?: string | null;
+}
+
 export interface AccessStatus {
   install_id: string;
   revoked: boolean;
@@ -99,6 +111,7 @@ export interface AccessStatus {
   resets: ResetEntry[];
   revoked_install_ids: string[];
   admin_install_ids: string[];
+  installs: InstallRecord[];
   message_fr: string;
   message_ar: string;
 }

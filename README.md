@@ -40,7 +40,8 @@ Hospital SOP (FR + AR), backup/restore, and kill-switch: **[docs/IT.md](docs/IT.
 - PIN lock, idle lock, local-only SQLite (WAL) per OS user
 - Share between PCs with **backup / restore** or Excel export — not a shared live database
 - Signed in-app updates from GitHub Releases (`latest.json`)
-- Remote revoke via public [`access.json`](access.json)
+- Remote revoke via signed public [`access.json`](access.json) (+ [`access.json.sig`](access.json.sig))
+- Auto-listing of online installs for the Admin Machines tab (Cloudflare Worker registry)
 
 ## Stack
 
@@ -67,7 +68,7 @@ cd src-tauri && cargo test
 
 ## Version
 
-Keep these in lockstep (currently **1.1.0**):
+Keep these in lockstep (currently **1.2.0**):
 
 - `package.json`
 - `src-tauri/Cargo.toml`
@@ -101,6 +102,17 @@ Secrets:
 - `TAURI_SIGNING_PRIVATE_KEY` / `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` (minisign; public key in `tauri.conf.json`)
 - Optional Windows Authenticode / Azure Trusted Signing
 - Optional macOS Developer ID: `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_PASSWORD`, `APPLE_TEAM_ID`
+
+Access policy signing (Ed25519; never commit the private key):
+
+```bash
+# once
+mkdir -p ~/.config/tawthiq
+openssl genpkey -algorithm Ed25519 -out ~/.config/tawthiq/access-signing.key
+./scripts/sign-access.sh
+# after Admin export:
+./scripts/admin-push-access.sh /path/to/access.json
+```
 
 Generate an updater keypair locally (never commit the private key):
 

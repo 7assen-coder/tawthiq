@@ -9,17 +9,19 @@ if [[ -z "$SRC" || ! -f "$SRC" ]]; then
 fi
 
 cp "$SRC" "$ROOT/access.json"
+"$ROOT/scripts/sign-access.sh" "$ROOT/access.json"
 cd "$ROOT"
 
-if [[ -n "$(git status --porcelain access.json)" ]]; then
-  git add access.json
+CHANGED="$(git status --porcelain access.json access.json.sig)"
+if [[ -n "$CHANGED" ]]; then
+  git add access.json access.json.sig
   git commit -m "$(cat <<'EOF'
 Update access policy for hospital installs.
 
 EOF
 )"
   git push origin HEAD
-  echo "Pushed access.json to origin."
+  echo "Pushed access.json + access.json.sig to origin."
 else
   echo "access.json unchanged."
 fi

@@ -4,6 +4,7 @@ import { PinScreen } from "@/screens/PinScreen";
 import { AppShell } from "@/components/layout/AppShell";
 import { RevokedScreen } from "@/screens/RevokedScreen";
 import { OfflineRequiredScreen } from "@/screens/OfflineRequiredScreen";
+import { UpdateAvailableModal } from "@/components/UpdateAvailableModal";
 import { useAuthStore } from "@/stores/authStore";
 import * as api from "@/services/tauriAdapter";
 import { useT } from "@/i18n/useT";
@@ -22,6 +23,8 @@ export default function App() {
     setAccessFromStatus,
   } = useAuthStore();
   const [phase, setPhase] = useState<AppPhase>("splash");
+  const [updateVersion, setUpdateVersion] = useState<string | null>(null);
+  const [updating, setUpdating] = useState(false);
   const t = useT();
 
   useEffect(() => {
@@ -41,6 +44,25 @@ export default function App() {
       setLoading(false);
     })();
   }, [setHasExistingPin, setLoading, setAccessFromStatus]);
+
+  useEffect(() => {
+    if (phase === "splash") return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const { check } = await import("@tauri-apps/plugin-updater");
+        const update = await check();
+        if (!cancelled && update) {
+          setUpdateVersion(update.version);
+        }
+      } catch {
+        /* unsigned / offline / no endpoint */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [phase]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -65,16 +87,53 @@ export default function App() {
     }
   }, [isAuthenticated, phase]);
 
+  const installUpdate = async () => {
+    setUpdating(true);
+    try {
+      const { check } = await import("@tauri-apps/plugin-updater");
+      const { relaunch } = await import("@tauri-apps/plugin-process");
+      const update = await check();
+      if (!update) {
+        setUpdateVersion(null);
+        return;
+      }
+      await update.downloadAndInstall();
+      await relaunch();
+    } catch {
+      setUpdating(false);
+    }
+  };
+
+  const updateModal =
+    updateVersion && phase !== "splash" && !isAuthenticated ? (
+      <UpdateAvailableModal
+        version={updateVersion}
+        updating={updating}
+        onInstall={() => void installUpdate()}
+        onLater={() => setUpdateVersion(null)}
+      />
+    ) : null;
+
   if (phase === "splash") {
     return <SplashScreen onComplete={() => setPhase("pin")} />;
   }
 
   if (accessRevoked) {
-    return <RevokedScreen />;
+    return (
+      <>
+        <RevokedScreen />
+        {updateModal}
+      </>
+    );
   }
 
   if (offlineLocked) {
-    return <OfflineRequiredScreen />;
+    return (
+      <>
+        <OfflineRequiredScreen />
+        {updateModal}
+      </>
+    );
   }
 
   if (!isAuthenticated) {
@@ -94,7 +153,12 @@ export default function App() {
         </div>
       );
     }
-    return <PinScreen />;
+    return (
+      <>
+        <PinScreen />
+        {updateModal}
+      </>
+    );
   }
 
   return <AppShell />;

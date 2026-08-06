@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { TopBar } from "./TopBar";
 import { BottomTabs } from "./BottomTabs";
 import { useSessionStore } from "@/stores/sessionStore";
@@ -11,8 +11,6 @@ import { ReglagesScreen } from "@/screens/ReglagesScreen";
 import { AdminScreen } from "@/screens/AdminScreen";
 import * as api from "@/services/tauriAdapter";
 import type { TabId } from "@/types";
-import { useT } from "@/i18n/useT";
-import { SoftActionButton } from "@/components/SoftActionButton";
 
 const screens: { id: TabId; Component: React.FC }[] = [
   { id: "saisie", Component: SaisieScreen },
@@ -29,9 +27,6 @@ export function AppShell() {
   const setAuthenticated = useAuthStore((s) => s.setAuthenticated);
   const isAdminMachine = useAuthStore((s) => s.isAdminMachine);
   const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [updateVersion, setUpdateVersion] = useState<string | null>(null);
-  const [updating, setUpdating] = useState(false);
-  const t = useT();
 
   useEffect(() => {
     if (!isAdminMachine && activeTab === "admin") {
@@ -89,24 +84,6 @@ export function AppShell() {
   }, [setAuthenticated]);
 
   useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const { check } = await import("@tauri-apps/plugin-updater");
-        const update = await check();
-        if (!cancelled && update) {
-          setUpdateVersion(update.version);
-        }
-      } catch {
-        /* unsigned / offline / no endpoint */
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
     const flush = () => useUiDraftStore.getState().persistNow();
     window.addEventListener("beforeunload", flush);
     const unsubTab = useSessionStore.subscribe((s, prev) => {
@@ -131,41 +108,9 @@ export function AppShell() {
     };
   }, []);
 
-  const installUpdate = async () => {
-    setUpdating(true);
-    try {
-      const { check } = await import("@tauri-apps/plugin-updater");
-      const { relaunch } = await import("@tauri-apps/plugin-process");
-      const update = await check();
-      if (!update) {
-        setUpdateVersion(null);
-        return;
-      }
-      await update.downloadAndInstall();
-      await relaunch();
-    } catch {
-      setUpdating(false);
-    }
-  };
-
   return (
     <div className="flex flex-col h-full">
       <TopBar />
-      {updateVersion && (
-        <div className="flex items-center justify-between gap-3 px-6 py-2.5 bg-[var(--teal-light)] border-b border-[var(--teal)]/20">
-          <p className="text-[13px] font-semibold text-[var(--teal)]">
-            {t("update.available").replace("{v}", updateVersion)}
-          </p>
-          <div className="flex gap-2">
-            <SoftActionButton
-              onClick={() => void installUpdate()}
-              label={updating ? "…" : t("update.install")}
-              variant="primary"
-            />
-            <SoftActionButton onClick={() => setUpdateVersion(null)} label={t("update.later")} variant="muted" />
-          </div>
-        </div>
-      )}
       <div className="flex-1 overflow-hidden relative">
         {screens.map(({ id, Component }) => (
           <div

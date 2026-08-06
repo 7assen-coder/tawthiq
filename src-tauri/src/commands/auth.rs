@@ -39,8 +39,15 @@ fn generate_recovery_code() -> String {
 }
 
 fn generate_temp_code() -> String {
-    let u = uuid::Uuid::new_v4().simple().to_string().to_uppercase();
-    format!("{}-{}", &u[0..4], &u[4..8])
+    // 16-char lowercase alphanumeric without ambiguous 0/O/1/l.
+    const ALPHABET: &[u8] = b"abcdefghijkmnopqrstuvwxyz23456789";
+    let bytes = uuid::Uuid::new_v4().as_bytes().to_vec();
+    let extra = uuid::Uuid::new_v4().as_bytes().to_vec();
+    let mut out = String::with_capacity(16);
+    for b in bytes.iter().chain(extra.iter()).take(16) {
+        out.push(ALPHABET[(*b as usize) % ALPHABET.len()] as char);
+    }
+    out
 }
 
 fn replace_pin_hash(conn: &rusqlite::Connection, new_pin: &str) -> Result<(), String> {
@@ -228,7 +235,8 @@ pub fn apply_temp_reset(
     validate_pin(&new_pin)?;
     let install_id = access::read_or_create_install_id(&app)?;
     let status = access::check_access(app.clone())?;
-    let code_trim = code.trim().to_uppercase();
+    // Temp codes are stored lowercase; accept any case from paste.
+    let code_trim = code.trim().to_lowercase();
     let now = Utc::now();
 
     let mut matched: Option<ResetEntry> = None;
@@ -394,6 +402,7 @@ pub fn export_access_policy_json(
     offline_grace_days: i64,
     contact: ContactInfo,
     resets: Vec<ResetEntry>,
+    installs: Vec<access::InstallRecord>,
     message_fr: String,
     message_ar: String,
     output_path: String,
@@ -406,6 +415,7 @@ pub fn export_access_policy_json(
         "offline_grace_days": offline_grace_days,
         "contact": contact,
         "resets": resets,
+        "installs": installs,
         "message_fr": message_fr,
         "message_ar": message_ar,
     });

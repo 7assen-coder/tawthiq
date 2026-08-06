@@ -43,6 +43,7 @@ CURSOR_PROMPT.md
 *.pfx
 tauri-updater.key
 tauri-updater.key.pub
+keys/
 src-tauri/target
 release/*.zip
 release/*.exe
@@ -50,7 +51,13 @@ release/*.dmg
 release/*.deb
 release/*.AppImage
 release/*.sig
+release/*.tar.gz
 release/latest.json
 release/SHA256SUMS.txt
 release/macos/
+
+# Cloudflare Worker local
+workers/**/node_modules/
+workers/**/.wrangler/
+workers/**/dist/
 

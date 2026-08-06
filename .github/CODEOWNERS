@@ -1,0 +1,7 @@
+# Policy and release controls — require owner review on PRs that touch them.
+/access.json @7assen-coder
+/access.json.sig @7assen-coder
+/.github/workflows/ @7assen-coder
+/scripts/admin-push-access.sh @7assen-coder
+/scripts/sign-access.sh @7assen-coder
+/src-tauri/tauri.conf.json @7assen-coder
