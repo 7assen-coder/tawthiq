@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { SupportContactCard } from "@/components/SupportContactCard";
+import { LanguageToggle } from "@/components/LanguageToggle";
 import { useAuthStore } from "@/stores/authStore";
 import { useSessionStore } from "@/stores/sessionStore";
 import { useT } from "@/i18n/useT";
@@ -35,7 +36,10 @@ export function RevokedScreen() {
       : revokeMessageFr || t("access.revoked");
 
   return (
-    <div className="h-full w-full flex items-center justify-center px-6 bg-[#F0F5F5]">
+    <div className="h-full w-full flex items-center justify-center px-6 bg-[#F0F5F5] relative">
+      <div className="absolute top-6 end-6">
+        <LanguageToggle />
+      </div>
       <SupportContactCard
         installId={id}
         contact={info}

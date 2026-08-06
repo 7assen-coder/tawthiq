@@ -2,12 +2,13 @@ import { useSessionStore } from "@/stores/sessionStore";
 import { useAuthStore } from "@/stores/authStore";
 import { formatMonth } from "@/lib/utils";
 import { SunIcon, MoonIcon } from "@/components/icons";
-import { softControlBase, softToggleActive, softToggleIdle } from "@/components/SoftActionButton";
+import { softControlBase, softToggleIdle } from "@/components/SoftActionButton";
+import { LanguageToggle } from "@/components/LanguageToggle";
 import { useT } from "@/i18n/useT";
 import * as api from "@/services/tauriAdapter";
 
 export function TopBar() {
-  const { currentSession, language, setLanguage, theme, setTheme } = useSessionStore();
+  const { currentSession, language, theme, setTheme } = useSessionStore();
   const setAuthenticated = useAuthStore((s) => s.setAuthenticated);
   const t = useT();
   const monthLabel = currentSession ? formatMonth(currentSession.month, language) : "";
@@ -32,24 +33,7 @@ export function TopBar() {
       </div>
 
       <div className="flex items-center gap-3 shrink-0">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setLanguage("fr")}
-            className={`${softControlBase} min-w-[52px] ${
-              language === "fr" ? softToggleActive : softToggleIdle
-            }`}
-          >
-            FR
-          </button>
-          <button
-            onClick={() => setLanguage("ar")}
-            className={`${softControlBase} min-w-[52px] ${
-              language === "ar" ? softToggleActive : softToggleIdle
-            }`}
-          >
-            ع
-          </button>
-        </div>
+        <LanguageToggle />
 
         <button
           onClick={async () => {

@@ -1,7 +1,9 @@
 {
   "revoked_all": false,
   "revoked_install_ids": [],
-  "admin_install_ids": [],
+  "admin_install_ids": [
+    "1e1081a3-0f72-42d5-9ccc-6108dbe84080"
+  ],
   "offline_grace_days": 2,
   "contact": {
     "whatsapp": "+22241824343",

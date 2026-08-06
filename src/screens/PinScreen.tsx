@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { LogoMark } from "@/components/Logo";
 import { SupportContactCard } from "@/components/SupportContactCard";
 import { SoftActionButton } from "@/components/SoftActionButton";
+import { LanguageToggle } from "@/components/LanguageToggle";
 import { useAuthStore } from "@/stores/authStore";
 import * as api from "@/services/tauriAdapter";
 import type { ContactInfo } from "@/services/tauriAdapter";
@@ -26,6 +27,7 @@ export function PinScreen() {
   const [installId, setInstallId] = useState("");
   const [support, setSupport] = useState<ContactInfo>(contact);
   const [pendingNewPin, setPendingNewPin] = useState<string | null>(null);
+  const [wrongAttempts, setWrongAttempts] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const t = useT();
   const lang = useSessionStore((s) => s.language);
@@ -135,22 +137,26 @@ export function PinScreen() {
         try {
           const result = await api.verifyPin(pin);
           if (result.ok) {
+            setWrongAttempts(0);
             setAuthenticated(true);
-          } else if (result.error === "LOCKED" && result.retry_after_secs) {
-            setError(t("pin.locked").replace("{s}", String(result.retry_after_secs)));
-            setShake(true);
-            setTimeout(() => {
-              setShake(false);
-              setDigits(["", "", "", ""]);
-            }, 600);
           } else {
-            setError(t("pin.wrong"));
-            setShake(true);
-            setTimeout(() => {
-              setShake(false);
-              setDigits(["", "", "", ""]);
-              setError("");
-            }, 600);
+            setWrongAttempts((n) => n + 1);
+            if (result.error === "LOCKED" && result.retry_after_secs) {
+              setError(t("pin.locked").replace("{s}", String(result.retry_after_secs)));
+              setShake(true);
+              setTimeout(() => {
+                setShake(false);
+                setDigits(["", "", "", ""]);
+              }, 600);
+            } else {
+              setError(t("pin.wrong"));
+              setShake(true);
+              setTimeout(() => {
+                setShake(false);
+                setDigits(["", "", "", ""]);
+                setError("");
+              }, 600);
+            }
           }
         } catch {
           setError(t("pin.unavailable"));
@@ -245,6 +251,9 @@ export function PinScreen() {
     return (
       <div className="h-full w-full overflow-y-auto px-6 py-8 bg-[#F0F5F5]">
         <div className="max-w-md mx-auto flex flex-col gap-5">
+          <div className="flex justify-end">
+            <LanguageToggle />
+          </div>
           <SupportContactCard
             installId={installId}
             contact={support}
@@ -313,13 +322,17 @@ export function PinScreen() {
 
   return (
     <div
-      className="h-full w-full flex items-center justify-center"
+      className="h-full w-full flex items-center justify-center relative"
       style={{
         background:
           "var(--pin-bg, radial-gradient(ellipse at center, #F0F5F5 0%, #E8EDEE 50%, #DFE5E6 100%))",
       }}
       onClick={() => inputRef.current?.focus()}
     >
+      <div className="absolute top-6 end-6">
+        <LanguageToggle />
+      </div>
+
       <div className="flex flex-col items-center gap-6">
         <LogoMark size={56} />
 
@@ -362,7 +375,7 @@ export function PinScreen() {
           {t("pin.hint")}
         </p>
 
-        {!isSetup && mode === "pin" && (
+        {!isSetup && mode === "pin" && wrongAttempts >= 3 && (
           <button
             type="button"
             className="text-[13px] font-semibold text-[var(--teal)]"

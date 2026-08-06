@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Git tag to release (e.g. v1.1.0)
+        description: Git tag to release (e.g. v1.1.1)
         required: true
-        default: v1.1.0
+        default: v1.1.1
 
 permissions:
   contents: write
@@ -62,7 +62,41 @@ jobs:
           npm -v
           npm ci --no-audit --no-fund || npm install --no-audit --no-fund
 
-      - name: Build and attach to GitHub Release
+      # Empty APPLE_CERTIFICATE secrets become "" in env and break security import.
+      # Detect non-empty cert before the build; secrets cannot be used in if: directly.
+      - name: Detect Apple signing certificate
+        id: apple
+        if: matrix.platform == 'macos-latest'
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+        run: |
+          if [ -n "${APPLE_CERTIFICATE}" ]; then
+            echo "signed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build and attach to GitHub Release (ad-hoc macOS / Win / Linux)
+        if: matrix.platform != 'macos-latest' || steps.apple.outputs.signed != 'true'
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: ${{ github.event.inputs.tag || github.ref_name }}
+          releaseName: Tawthiq ${{ github.event.inputs.tag || github.ref_name }}
+          releaseBody: |
+            Desktop installers for Windows (NSIS `.exe`), macOS (`.dmg` / `.app`), and Linux (`.deb` / `.AppImage`).
+            Also download `Tawthiq-${{ github.event.inputs.tag || github.ref_name }}-all-os.zip` when the package job finishes (partial OS sets are OK if one platform flakes).
+            Hospital SOP: docs/IT.md. Unsigned macOS builds: right-click → Open (Gatekeeper). Windows may show SmartScreen on first run.
+          releaseDraft: false
+          prerelease: false
+          args: ${{ matrix.args }}
+          updaterJsonPreferNsis: true
+
+      - name: Build and attach to GitHub Release (signed macOS)
+        if: matrix.platform == 'macos-latest' && steps.apple.outputs.signed == 'true'
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

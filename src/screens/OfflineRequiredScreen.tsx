@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { SupportContactCard } from "@/components/SupportContactCard";
 import { SoftActionButton } from "@/components/SoftActionButton";
+import { LanguageToggle } from "@/components/LanguageToggle";
 import { useAuthStore } from "@/stores/authStore";
 import { useT } from "@/i18n/useT";
 import * as api from "@/services/tauriAdapter";
@@ -44,7 +45,10 @@ export function OfflineRequiredScreen() {
   };
 
   return (
-    <div className="h-full w-full flex items-center justify-center px-6 bg-[#F0F5F5]">
+    <div className="h-full w-full flex items-center justify-center px-6 bg-[#F0F5F5] relative">
+      <div className="absolute top-6 end-6">
+        <LanguageToggle />
+      </div>
       <div className="flex flex-col items-center gap-4">
         <SupportContactCard
           installId={id}
