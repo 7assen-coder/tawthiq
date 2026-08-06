@@ -7,9 +7,9 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Git tag to release (e.g. v1.0.0)
+        description: Git tag to release (e.g. v1.1.0)
         required: true
-        default: v1.0.0
+        default: v1.1.0
 
 permissions:
   contents: write
@@ -37,6 +37,11 @@ jobs:
           node-version: "24"
 
       - uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
 
       - name: Linux WebKit / GTK deps
         if: matrix.platform == 'ubuntu-22.04'
@@ -73,9 +78,9 @@ jobs:
           tagName: ${{ github.event.inputs.tag || github.ref_name }}
           releaseName: Tawthiq ${{ github.event.inputs.tag || github.ref_name }}
           releaseBody: |
-            Desktop installers for Windows (NSIS `.exe`), macOS (`.dmg`), and Linux (`.deb` / `.AppImage`).
-            After this workflow finishes, also download `Tawthiq-${{ github.event.inputs.tag || github.ref_name }}-all-os.zip`.
-            Hospital SOP: docs/IT.md. Unsigned first builds may trigger SmartScreen / Gatekeeper (macOS: right-click → Open).
+            Desktop installers for Windows (NSIS `.exe`), macOS (`.dmg` / `.app`), and Linux (`.deb` / `.AppImage`).
+            Also download `Tawthiq-${{ github.event.inputs.tag || github.ref_name }}-all-os.zip` when the package job finishes (partial OS sets are OK if one platform flakes).
+            Hospital SOP: docs/IT.md. Unsigned macOS builds: right-click → Open (Gatekeeper). Windows may show SmartScreen on first run.
           releaseDraft: false
           prerelease: false
           args: ${{ matrix.args }}
@@ -83,7 +88,7 @@ jobs:
 
   package-all-os:
     needs: build
-    if: ${{ !cancelled() }}
+    if: ${{ always() && !cancelled() }}
     runs-on: ubuntu-22.04
     steps:
       - name: Zip per-OS installers onto the release
@@ -93,20 +98,34 @@ jobs:
           set -euo pipefail
           TAG="${{ github.event.inputs.tag || github.ref_name }}"
           mkdir -p all-os/{windows,macos,linux,updater} all-os-raw
-          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir all-os-raw
+          if ! gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir all-os-raw; then
+            echo "No release assets yet for $TAG"
+            exit 1
+          fi
           shopt -s nullglob
           cd all-os-raw
-          for f in *.exe *.nsis.zip *.msi; do mv "$f" ../all-os/windows/; done
-          for f in *.dmg *.app.tar.gz; do mv "$f" ../all-os/macos/; done
-          for f in *.deb *.AppImage *.rpm; do mv "$f" ../all-os/linux/; done
+          for f in *.exe *.nsis.zip *.msi; do
+            [[ -e "$f" ]] && mv "$f" ../all-os/windows/
+          done
+          for f in *.dmg *.app.tar.gz; do
+            [[ -e "$f" ]] && mv "$f" ../all-os/macos/
+          done
+          for f in *.deb *.AppImage *.rpm; do
+            [[ -e "$f" ]] && mv "$f" ../all-os/linux/
+          done
           for f in latest.json *.sig *.app.tar.gz.sig; do
             [[ -e "$f" ]] && mv "$f" ../all-os/updater/ || true
           done
-          # leftover updater sidecars / checksums
           for f in *; do
             [[ -f "$f" ]] && mv "$f" ../all-os/updater/
           done
           cd ..
+          BIN_COUNT=$(find all-os/windows all-os/macos all-os/linux -type f 2>/dev/null | wc -l | tr -d ' ')
+          if [[ "$BIN_COUNT" -eq 0 ]]; then
+            echo "No installer binaries found — aborting zip"
+            exit 1
+          fi
+          echo "Packaging $BIN_COUNT installer file(s)"
           find all-os -type f -print0 | sort -z | xargs -0 sha256sum > all-os/SHA256SUMS.txt
           zip -r "Tawthiq-${TAG}-all-os.zip" all-os
           gh release upload "$TAG" "Tawthiq-${TAG}-all-os.zip" --repo "$GITHUB_REPOSITORY" --clobber

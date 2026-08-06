@@ -8,6 +8,7 @@ import { SaisieScreen } from "@/screens/SaisieScreen";
 import { RapportScreen } from "@/screens/RapportScreen";
 import { HistoriqueScreen } from "@/screens/HistoriqueScreen";
 import { ReglagesScreen } from "@/screens/ReglagesScreen";
+import { AdminScreen } from "@/screens/AdminScreen";
 import * as api from "@/services/tauriAdapter";
 import type { TabId } from "@/types";
 import { useT } from "@/i18n/useT";
@@ -18,17 +19,25 @@ const screens: { id: TabId; Component: React.FC }[] = [
   { id: "rapport", Component: RapportScreen },
   { id: "historique", Component: HistoriqueScreen },
   { id: "reglages", Component: ReglagesScreen },
+  { id: "admin", Component: AdminScreen },
 ];
 
 const IDLE_LOCK_MS = 10 * 60 * 1000;
 
 export function AppShell() {
-  const { activeTab, setCurrentSession, backupIntervalHours } = useSessionStore();
+  const { activeTab, setCurrentSession, backupIntervalHours, setActiveTab } = useSessionStore();
   const setAuthenticated = useAuthStore((s) => s.setAuthenticated);
+  const isAdminMachine = useAuthStore((s) => s.isAdminMachine);
   const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [updateVersion, setUpdateVersion] = useState<string | null>(null);
   const [updating, setUpdating] = useState(false);
   const t = useT();
+
+  useEffect(() => {
+    if (!isAdminMachine && activeTab === "admin") {
+      setActiveTab("saisie");
+    }
+  }, [isAdminMachine, activeTab, setActiveTab]);
 
   useEffect(() => {
     (async () => {
@@ -64,6 +73,7 @@ export function AppShell() {
     const bump = () => {
       if (idleTimer.current) clearTimeout(idleTimer.current);
       idleTimer.current = setTimeout(async () => {
+        await api.adminSessionLock();
         await api.lockSession();
         setAuthenticated(false);
       }, IDLE_LOCK_MS);

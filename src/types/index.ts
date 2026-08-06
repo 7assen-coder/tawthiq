@@ -172,6 +172,6 @@ export const CAS_CONFIGS: CasConfig[] = [
   { type: "cas7", label: "cas.cas7", sublabel: "cas.cas7.sub", color: "#1E9E6B", bgColor: "#E7F7EF", icon: "check" },
 ];
 
-export type TabId = "saisie" | "rapport" | "historique" | "reglages";
+export type TabId = "saisie" | "rapport" | "historique" | "reglages" | "admin";
 export type SaisieMode = "import" | "manuel";
 export type ReglagesCategory = "apparence" | "donnees" | "apropos";

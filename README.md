@@ -67,7 +67,7 @@ cd src-tauri && cargo test
 
 ## Version
 
-Keep these in lockstep (currently **1.0.0**):
+Keep these in lockstep (currently **1.1.0**):
 
 - `package.json`
 - `src-tauri/Cargo.toml`

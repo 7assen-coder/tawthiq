@@ -1,6 +1,13 @@
 {
   "revoked_all": false,
   "revoked_install_ids": [],
+  "admin_install_ids": [],
+  "offline_grace_days": 2,
+  "contact": {
+    "whatsapp": "+22241824343",
+    "email": "MoHasseenn@gmail.com"
+  },
+  "resets": [],
   "message_fr": "Accès révoqué. Contactez l’éditeur.",
   "message_ar": "تم إلغاء الوصول. تواصل مع الناشر."
 }

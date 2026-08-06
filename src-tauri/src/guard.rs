@@ -4,6 +4,7 @@ use std::time::{Duration, Instant};
 #[derive(Default)]
 pub struct AuthSession {
     unlocked: bool,
+    admin_unlocked: bool,
     fail_count: u32,
     lockout_until: Option<Instant>,
     lockout_level: u32,
@@ -27,6 +28,7 @@ pub fn require_auth() -> Result<(), String> {
 pub fn lock() {
     if let Ok(mut session) = auth().lock() {
         session.unlocked = false;
+        session.admin_unlocked = false;
     }
 }
 
@@ -36,6 +38,34 @@ pub fn unlock() {
         session.fail_count = 0;
         session.lockout_until = None;
     }
+}
+
+pub fn unlock_admin() {
+    if let Ok(mut session) = auth().lock() {
+        session.admin_unlocked = true;
+    }
+}
+
+pub fn lock_admin() {
+    if let Ok(mut session) = auth().lock() {
+        session.admin_unlocked = false;
+    }
+}
+
+pub fn require_admin() -> Result<(), String> {
+    let session = auth().lock().map_err(|_| "ADMIN_REQUIRED".to_string())?;
+    if session.unlocked && session.admin_unlocked {
+        Ok(())
+    } else {
+        Err("ADMIN_REQUIRED".to_string())
+    }
+}
+
+pub fn is_admin_unlocked() -> bool {
+    auth()
+        .lock()
+        .map(|s| s.admin_unlocked)
+        .unwrap_or(false)
 }
 
 pub fn lockout_remaining_secs() -> Option<u64> {

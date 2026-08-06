@@ -1,10 +1,17 @@
 import { useSessionStore } from "@/stores/sessionStore";
+import { useAuthStore } from "@/stores/authStore";
 import type { TabId } from "@/types";
-import { PencilIcon, BarChartIcon, CalendarIcon, GearIcon } from "@/components/icons";
+import {
+  PencilIcon,
+  BarChartIcon,
+  CalendarIcon,
+  GearIcon,
+  ShieldIcon,
+} from "@/components/icons";
 import { useT } from "@/i18n/useT";
 import type { TKey } from "@/i18n/translations";
 
-const tabs: { id: TabId; labelKey: TKey; icon: typeof PencilIcon }[] = [
+const baseTabs: { id: TabId; labelKey: TKey; icon: typeof PencilIcon }[] = [
   { id: "saisie", labelKey: "tab.saisie", icon: PencilIcon },
   { id: "rapport", labelKey: "tab.rapport", icon: BarChartIcon },
   { id: "historique", labelKey: "tab.historique", icon: CalendarIcon },
@@ -13,7 +20,15 @@ const tabs: { id: TabId; labelKey: TKey; icon: typeof PencilIcon }[] = [
 
 export function BottomTabs() {
   const { activeTab, setActiveTab } = useSessionStore();
+  const isAdminMachine = useAuthStore((s) => s.isAdminMachine);
   const t = useT();
+
+  const tabs = isAdminMachine
+    ? [
+        ...baseTabs,
+        { id: "admin" as const, labelKey: "tab.admin" as TKey, icon: ShieldIcon },
+      ]
+    : baseTabs;
 
   return (
     <div className="flex items-stretch bg-[var(--bg-card)] border-t border-[var(--border)] px-4 py-2.5 gap-2">

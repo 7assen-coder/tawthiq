@@ -3,6 +3,7 @@ import { SplashScreen } from "@/screens/SplashScreen";
 import { PinScreen } from "@/screens/PinScreen";
 import { AppShell } from "@/components/layout/AppShell";
 import { RevokedScreen } from "@/screens/RevokedScreen";
+import { OfflineRequiredScreen } from "@/screens/OfflineRequiredScreen";
 import { useAuthStore } from "@/stores/authStore";
 import * as api from "@/services/tauriAdapter";
 import { useT } from "@/i18n/useT";
@@ -17,7 +18,8 @@ export default function App() {
     setLoading,
     isLoading,
     accessRevoked,
-    setAccessRevoked,
+    offlineLocked,
+    setAccessFromStatus,
   } = useAuthStore();
   const [phase, setPhase] = useState<AppPhase>("splash");
   const t = useT();
@@ -26,9 +28,7 @@ export default function App() {
     (async () => {
       try {
         const status = await api.checkAccess();
-        if (status.revoked) {
-          setAccessRevoked(true, status.message_fr, status.message_ar);
-        }
+        setAccessFromStatus(status);
       } catch {
         /* offline / unsigned */
       }
@@ -40,22 +40,22 @@ export default function App() {
       }
       setLoading(false);
     })();
-  }, [setHasExistingPin, setLoading, setAccessRevoked]);
+  }, [setHasExistingPin, setLoading, setAccessFromStatus]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
     void (async () => {
       try {
         const status = await api.checkAccess();
-        if (status.revoked) {
+        setAccessFromStatus(status);
+        if (status.revoked || status.offline_locked) {
           await api.lockSession();
-          setAccessRevoked(true, status.message_fr, status.message_ar);
         }
       } catch {
         /* offline */
       }
     })();
-  }, [isAuthenticated, setAccessRevoked]);
+  }, [isAuthenticated, setAccessFromStatus]);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -71,6 +71,10 @@ export default function App() {
 
   if (accessRevoked) {
     return <RevokedScreen />;
+  }
+
+  if (offlineLocked) {
+    return <OfflineRequiredScreen />;
   }
 
   if (!isAuthenticated) {

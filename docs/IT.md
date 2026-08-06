@@ -38,18 +38,23 @@ Non-destructive alternative: **Rapport → Exporter tout** (Excel).
 
 Auto-backup keeps the last 5 dumps under `…/backups/`.
 
-### PIN reset (no in-app recovery)
+### PIN reset
 
-- Restore a backup that still has a known PIN, **or**
-- Quit Tawthiq, delete `tawthiq.db` (+ `-wal` / `-shm`), relaunch, create a new PIN.
+1. **Code de récupération** (affiché une fois à la création du PIN) → écran PIN → **PIN oublié** → saisir le code → créer un nouveau PIN.
+2. **Code temporaire** (éditeur) : l’utilisatrice envoie son **Identifiant d’installation** (WhatsApp **+222 41824343** / e-mail **MoHasseenn@gmail.com**). L’éditeur génère un code 24 h depuis l’onglet **Admin**, pousse `access.json`, elle saisit le code puis crée un nouveau PIN.
+3. Dernier recours : restaurer une sauvegarde, ou supprimer `tawthiq.db` (+ `-wal` / `-shm`) (perte des données locales).
 
-Failed PIN: 5 tries → 30s / 2 min / 10 min lockout (enforced in the app process). Idle lock after 10 minutes. Top bar **Verrouiller**.
+Failed PIN: 5 tries → 30s / 2 min / 10 min lockout. Idle lock after 10 minutes. Top bar **Verrouiller**.
+
+### Offline grace (hidden)
+
+PCs may work offline for **2 full days** after the last successful online policy check. On the **3rd day** the app blocks until Internet is available (screen shows Install ID + contact; no countdown). Admin machines listed in `admin_install_ids` are exempt.
 
 ### Updates
 
 Channel: public GitHub repo [7assen-coder/tawthiq](https://github.com/7assen-coder/tawthiq).
 
-1. Publisher bumps version with `./scripts/release.sh 1.0.1` (tag `v1.0.1`).
+1. Publisher bumps version with `./scripts/release.sh 1.1.0` (tag `v1.1.0`).
 2. GitHub Actions builds Windows / macOS / Linux and publishes a Release (including `latest.json` and `Tawthiq-v…-all-os.zip`).
 3. Online PCs show **Update available → download → relaunch**. No silent force-update.
 
@@ -60,17 +65,25 @@ Offline USB install: use `Tawthiq-v…-all-os.zip` from the Release (also copied
 File on `main`: [`access.json`](https://github.com/7assen-coder/tawthiq/blob/main/access.json).
 
 - **All PCs:** `"revoked_all": true` then commit + push. No new app build.
-- **One PC:** copy **Identifiant d’installation** from Réglages → À propos into `revoked_install_ids`, push.
+- **One PC:** copy Install ID from the revoked screen / Réglages into `revoked_install_ids`, or use Admin → export → `./scripts/admin-push-access.sh`.
 
-When an online PC next opens Tawthiq it locks. PIN cannot bypass. Offline PCs that never reached GitHub keep working until they go online. After a PC has seen revoke, it stays locked even offline.
+Blocked screens always show Install ID + WhatsApp / e-mail. PIN cannot bypass revoke.
 
-Un-revoke: set `revoked_all` false / remove the ID, push; the PC must go online once to clear the local flag.
+Un-revoke: remove the ID / set `revoked_all` false, push; the PC must go online once.
+
+### Admin tab (publisher only)
+
+1. Add your Install ID to `admin_install_ids` in `access.json` and push.
+2. Reopen Tawthiq online → fifth tab **Admin** appears.
+3. Set / enter Admin Master PIN (separate from operator PIN).
+4. Issue temp resets, edit revoke lists / grace days / contact, **Export access.json**, then `./scripts/admin-push-access.sh path`.
 
 ### Security baseline
 
 - Enable BitLocker / FileVault / disk encryption.
 - Do not copy `tawthiq.db` to email or chat.
 - Only one instance of the app may run (single-instance lock protects WAL).
+- Never ship updater private keys or GitHub tokens inside the hospital build.
 
 ---
 
@@ -106,7 +119,13 @@ Un-revoke: set `revoked_all` false / remove the ID, push; the PC must go online 
 
 ### إعادة تعيين PIN
 
-لا يوجد استرجاع داخل التطبيق. استعد نسخة احتياطية، أو احذف `tawthiq.db` وأنشئ رمزاً جديداً.
+1. **رمز الاستعادة** (يظهر مرة عند إنشاء PIN) → نسيت الرمز → أدخل الرمز → أنشئ PIN جديداً.
+2. **رمز مؤقت من الناشر**: أرسلي معرّف التثبيت عبر واتساب **+222 41824343** أو البريد **MoHasseenn@gmail.com**. الناشر يصدر رمزاً لـ 24 ساعة من تبويب الإدارة.
+3. آخر حل: استعادة نسخة، أو حذف `tawthiq.db` (فقدان البيانات المحلية).
+
+### العمل دون إنترنت
+
+مسموح يومان كاملان بعد آخر تحقق ناجح عبر الإنترنت. من اليوم الثالث يُقفل التطبيق حتى يتصل بالإنترنت (شاشة تعرض المعرّف ووسائل التواصل دون عدّاد ظاهر). أجهزة الأدمن مستثناة.
 
 ### التحديثات
 
@@ -117,9 +136,13 @@ Un-revoke: set `revoked_all` false / remove the ID, push; the PC must go online 
 عدّل `access.json` على فرع `main`:
 
 - الكل: `"revoked_all": true`
-- جهاز واحد: أضف معرّف التثبيت من الإعدادات → حول
+- جهاز واحد: أضف معرّف التثبيت من شاشة الإلغاء / الإعدادات
 
-الجهاز المتصل بالإنترنت يُقفل. PIN لا يتجاوز القفل.
+الشاشات تعرض دائماً معرّف التثبيت + واتساب / بريد. PIN لا يتجاوز القفل.
+
+### تبويب الإدارة (للناشر فقط)
+
+أضف معرّف جهازك إلى `admin_install_ids`، ادفع التغيير، افتح التطبيق متصلاً، أنشئ رمز أدمن، صدّر `access.json` ثم `./scripts/admin-push-access.sh`.
 
 ### الأمان
 

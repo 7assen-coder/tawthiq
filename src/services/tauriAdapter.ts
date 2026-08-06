@@ -31,22 +31,82 @@ export interface ComparisonPage {
 
 // Auth
 export const hasPin = () => invoke<boolean>("has_pin");
-export const setupPin = (pin: string) => invoke<void>("setup_pin", { pin });
+export const setupPin = (pin: string) =>
+  invoke<{ recovery_code: string }>("setup_pin", { pin });
 export const verifyPin = (pin: string) => invoke<PinVerifyResult>("verify_pin", { pin });
 export const changePin = (oldPin: string, newPin: string) =>
   invoke<void>("change_pin", { oldPin, newPin });
+export const applyRecoveryCode = (recoveryCode: string, newPin: string) =>
+  invoke<{ recovery_code: string }>("apply_recovery_code", { recoveryCode, newPin });
+export const applyTempReset = (code: string, newPin: string) =>
+  invoke<void>("apply_temp_reset", { code, newPin });
+export const hasAdminMasterPin = () => invoke<boolean>("has_admin_master_pin");
+export const setupAdminMasterPin = (pin: string) =>
+  invoke<void>("setup_admin_master_pin", { pin });
+export const verifyAdminMasterPin = (pin: string) =>
+  invoke<void>("verify_admin_master_pin", { pin });
+export const adminSessionLock = () => invoke<void>("admin_session_lock");
+export const adminSessionActive = () => invoke<boolean>("admin_session_active");
+export const generateTempReset = (targetInstallId: string) =>
+  invoke<{ code: string; entry: ResetEntry }>("generate_temp_reset", {
+    targetInstallId,
+  });
+export const exportAccessPolicyJson = (payload: {
+  revokedAll: boolean;
+  revokedInstallIds: string[];
+  adminInstallIds: string[];
+  offlineGraceDays: number;
+  contact: ContactInfo;
+  resets: ResetEntry[];
+  messageFr: string;
+  messageAr: string;
+  outputPath: string;
+}) =>
+  invoke<string>("export_access_policy_json", {
+    revokedAll: payload.revokedAll,
+    revokedInstallIds: payload.revokedInstallIds,
+    adminInstallIds: payload.adminInstallIds,
+    offlineGraceDays: payload.offlineGraceDays,
+    contact: payload.contact,
+    resets: payload.resets,
+    messageFr: payload.messageFr,
+    messageAr: payload.messageAr,
+    outputPath: payload.outputPath,
+  });
 export const lockSession = () => invoke<void>("lock_session");
 export const getAppVersion = () => invoke<string>("get_app_version");
+
+export interface ContactInfo {
+  whatsapp: string;
+  email: string;
+}
+
+export interface ResetEntry {
+  install_id: string;
+  code_hash: string;
+  expires_at: string;
+  force_new_pin: boolean;
+  once: boolean;
+}
 
 export interface AccessStatus {
   install_id: string;
   revoked: boolean;
+  offline_locked: boolean;
+  is_admin: boolean;
+  offline_grace_days: number;
+  contact: ContactInfo;
+  resets: ResetEntry[];
+  revoked_install_ids: string[];
+  admin_install_ids: string[];
   message_fr: string;
   message_ar: string;
 }
 
 export const checkAccess = () => invoke<AccessStatus>("check_access");
 export const getInstallId = () => invoke<string>("get_install_id");
+export const getPublicInstallId = () => invoke<string>("get_public_install_id");
+export const getSupportContact = () => invoke<ContactInfo>("get_support_contact");
 
 // Session
 export const getCurrentSession = () => invoke<Session>("get_current_session");

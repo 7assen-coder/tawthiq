@@ -75,6 +75,13 @@ fn run_migrations(conn: &Connection, db_path: &std::path::Path) -> Result<()> {
         conn.execute_batch(include_str!("migrations/002_perf_indexes.sql"))?;
         conn.execute("INSERT INTO schema_version (version) VALUES (2)", [])?;
     }
+    if current_version < 3 {
+        if current_version >= 1 {
+            backup_before_migrate(conn, db_path, current_version);
+        }
+        conn.execute_batch(include_str!("migrations/003_auth_recovery.sql"))?;
+        conn.execute("INSERT INTO schema_version (version) VALUES (3)", [])?;
+    }
 
     Ok(())
 }
